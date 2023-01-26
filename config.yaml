@@ -1,0 +1,6 @@
+neo4j:
+  host: "localhost"
+  port: 6362
+  user: "neo4j"
+  password: "neo4j"
+  realm: "feed"
