@@ -2,7 +2,6 @@ package service
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -36,8 +35,6 @@ func NewS3Service(region, endpoint, secretId, secretKey, bucket string) (*S3Serv
 // SaveFile 保存文件至S3
 func (s *S3Service) SaveFile(filePath string, file []byte) error {
 	service := s3.New(s.cfg)
-
-	fmt.Printf("file: %s\n", file)
 	_, err := service.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(filePath),
