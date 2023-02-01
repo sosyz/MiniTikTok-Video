@@ -26,11 +26,15 @@ type Neo4j struct {
 }
 
 type S3 struct {
-	Region    string
-	Endpoint  string
-	SecretId  string
-	SecretKey string
-	Bucket    string
+	Region   string
+	Endpoint string
+	Secret   Secret
+	Bucket   string
+}
+
+type Secret struct {
+	Id  string
+	Key string
 }
 
 type Listen struct {
