@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/sosyz/mino_tiktok_video/Feed/common/conf"
+	"github.com/sosyz/mini_tiktok_feed/Feed/common/conf"
 	"github.com/spf13/viper"
 )
 

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/sosyz/mino_tiktok_video/Feed/common/snowflake"
+	"github.com/sosyz/mini_tiktok_feed/Feed/common/snowflake"
 )
 
 type Video struct {
