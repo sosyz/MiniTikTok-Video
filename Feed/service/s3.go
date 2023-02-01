@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -62,10 +63,19 @@ func (s *S3Service) GetFile(filePath string) (io.Reader, error) {
 	return object.Body, nil
 }
 
-func DeleteFile() {
+func (s *S3Service) DeleteFile(filePath string) error {
+	service := s3.New(s.cfg)
 
-}
+	res, err := service.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(filePath),
+	})
+	if err != nil {
+		return err
+	}
 
-func FileInfo() {
-
+	if res.DeleteMarker != nil {
+		return fmt.Errorf("delete file failed")
+	}
+	return nil
 }
