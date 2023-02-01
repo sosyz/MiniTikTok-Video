@@ -4,3 +4,10 @@ neo4j:
   user: "neo4j"
   password: "neo4j"
   realm: "feed"
+s3:
+  region: "ap-beijing"
+  endpoint: "cos.ap-beijing.myqcloud.com"
+  secret:
+    id: "AKxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    key: "qPxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  bucket: "feed"

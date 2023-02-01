@@ -25,6 +25,18 @@ type Neo4j struct {
 	Realm    string
 }
 
+type S3 struct {
+	Region   string
+	Endpoint string
+	Secret   Secret
+	Bucket   string
+}
+
+type Secret struct {
+	Id  string
+	Key string
+}
+
 type Listen struct {
 	Host string
 	Port int
