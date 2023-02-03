@@ -52,3 +52,8 @@ type Run struct {
 	Listen Listen
 	Server Server
 }
+
+type Vol struct {
+	Ak string
+	Sk string
+}
