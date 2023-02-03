@@ -9,7 +9,11 @@ import (
 	"github.com/volcengine/volc-sdk-golang/service/visual"
 )
 
-func CreateVisualService(accessKey, secretKey string) *visual.Visual {
+type VisualInst struct {
+	vis *visual.Visual
+}
+
+func CreateVisualService(accessKey, secretKey string) *VisualInst {
 	instance := visual.NewInstance()
 	instance.Client.SetAccessKey(accessKey)
 	instance.Client.SetSecretKey(secretKey)
@@ -22,12 +26,14 @@ func CreateVisualService(accessKey, secretKey string) *visual.Visual {
 			"Version": []string{"2020-08-26"},
 		},
 	}
-	return instance
+	return &VisualInst{
+		vis: instance,
+	}
 }
 
-func VideoCoverSelection(instance *visual.Visual, form url.Values) (*VideoCoverSelectResult, int, error) {
+func VideoCoverSelection(instance *VisualInst, form url.Values) (*VideoCoverSelectResult, int, error) {
 	resp := new(VideoCoverSelectResult)
-	data, statusCode, err := instance.Client.Post("VideoCoverSelection", nil, form)
+	data, statusCode, err := instance.vis.Client.Post("VideoCoverSelection", nil, form)
 	if err != nil {
 		errMsg := err.Error()
 		if errMsg[:3] != "api" {

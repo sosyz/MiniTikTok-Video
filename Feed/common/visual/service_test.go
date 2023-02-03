@@ -41,11 +41,11 @@ func TestVideoCoverSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	instance := CreateVisualService(cfg.Vol.Ak, cfg.Vol.Sk)
+	inst := CreateVisualService(cfg.Vol.Ak, cfg.Vol.Sk)
 	form := url.Values{}
 
 	form.Add("video_url", string(video_url))
-	res, code, err := VideoCoverSelection(instance, form)
+	res, code, err := VideoCoverSelection(inst, form)
 	if err != nil {
 		t.Error(err)
 	}
