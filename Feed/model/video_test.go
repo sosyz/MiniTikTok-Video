@@ -12,7 +12,7 @@ import (
 var (
 	neo4jConf conf.Neo4j
 	cfgFile         = "../../config-dev.yaml"
-	id        int64 = 7092735265738752
+	id        int64 = 7108107930963968
 )
 
 func TestCreate(t *testing.T) {
@@ -32,7 +32,7 @@ func TestCreate(t *testing.T) {
 	neo4jConf = cfg.Neo4j
 	t.Log(neo4jConf)
 	ctx := context.Background()
-	err := InitVideo(
+	vm, err := NewVideoModel(
 		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
@@ -45,24 +45,25 @@ func TestCreate(t *testing.T) {
 	}
 
 	defer func() {
-		err := CloseVideo(ctx)
+		err := vm.Close(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	video := Video{
+	video := &VideoInfo{
 		Name:   "test",
 		Title:  "test",
 		Size:   100,
 		Author: 1,
 		Status: 0,
 	}
-	err = video.Create(ctx)
+	err = vm.Create(ctx, video)
+
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("create video: %v", video)
+	t.Logf("create video %v", video)
 }
 
 func TestGet(t *testing.T) {
@@ -81,7 +82,7 @@ func TestGet(t *testing.T) {
 	neo4jConf = cfg.Neo4j
 	t.Log(neo4jConf)
 	ctx := context.Background()
-	err := InitVideo(
+	vm, err := NewVideoModel(
 		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
@@ -94,15 +95,13 @@ func TestGet(t *testing.T) {
 	}
 
 	defer func() {
-		err := CloseVideo(ctx)
+		err := vm.Close(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	video := Video{
-		ID: id,
-	}
-	err = video.Get(ctx)
+
+	video, err := vm.Get(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +109,7 @@ func TestGet(t *testing.T) {
 	t.Log(video)
 }
 
-func TestList(t *testing.T) {
+func TestListByLastesTime(t *testing.T) {
 	t.Log("test list")
 	var cfg struct {
 		Neo4j conf.Neo4j
@@ -126,7 +125,7 @@ func TestList(t *testing.T) {
 	neo4jConf = cfg.Neo4j
 	t.Log(neo4jConf)
 	ctx := context.Background()
-	err := InitVideo(
+	vm, err := NewVideoModel(
 		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
@@ -139,12 +138,12 @@ func TestList(t *testing.T) {
 	}
 
 	defer func() {
-		err := CloseVideo(ctx)
+		err := vm.Close(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	videos, err := List(ctx, 0)
+	videos, err := vm.ListByLastesTime(ctx, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +167,7 @@ func TestUpdate(t *testing.T) {
 	neo4jConf = cfg.Neo4j
 	t.Log(neo4jConf)
 	ctx := context.Background()
-	err := InitVideo(
+	vm, err := NewVideoModel(
 		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
@@ -181,29 +180,27 @@ func TestUpdate(t *testing.T) {
 	}
 
 	defer func() {
-		err := CloseVideo(ctx)
+		err := vm.Close(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	video := Video{
-		ID: id,
-	}
-	err = video.Get(ctx)
+
+	video, err := vm.Get(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(v)
+	t.Log(video)
 	video.Title = "test update"
-	err = video.Update(ctx)
+	err = vm.Update(ctx, video)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = video.Get(ctx)
+	video, err = vm.Get(ctx, video.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(v)
+	t.Log(video)
 }
 
 func TestDelete(t *testing.T) {
@@ -222,7 +219,7 @@ func TestDelete(t *testing.T) {
 	neo4jConf = cfg.Neo4j
 	t.Log(neo4jConf)
 	ctx := context.Background()
-	err := InitVideo(
+	vm, err := NewVideoModel(
 		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
@@ -235,25 +232,23 @@ func TestDelete(t *testing.T) {
 	}
 
 	defer func() {
-		err := CloseVideo(ctx)
+		err := vm.Close(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	video := Video{
-		ID: id,
-	}
-	err = video.Get(ctx)
+
+	video, err := vm.Get(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(v)
-	err = video.Delete(ctx)
+	t.Log(video)
+	err = vm.Delete(ctx, video)
 	if err != nil {
 		t.Logf("err: %v", err)
 		t.Fatal(err)
 	}
-	err = video.Get(ctx)
+	_, err = vm.Get(ctx, id)
 	if err != nil {
 		t.Logf("err: %v", err)
 		t.Log("delete success")

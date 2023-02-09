@@ -13,8 +13,9 @@ import (
 )
 
 type S3Service struct {
-	cfg    client.ConfigProvider
-	bucket string
+	cfg      client.ConfigProvider
+	bucket   string
+	endpoint string
 }
 
 func NewS3Service(region, endpoint, secretId, secretKey, bucket string) (*S3Service, error) {
@@ -28,8 +29,9 @@ func NewS3Service(region, endpoint, secretId, secretKey, bucket string) (*S3Serv
 	}
 
 	return &S3Service{
-		cfg:    conf,
-		bucket: bucket,
+		cfg:      conf,
+		bucket:   bucket,
+		endpoint: endpoint,
 	}, nil
 }
 
