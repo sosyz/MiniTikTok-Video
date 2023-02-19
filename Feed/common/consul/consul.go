@@ -7,13 +7,13 @@ import (
 	"github.com/sosyz/mini_tiktok_feed/Feed/common/conf"
 )
 
-func ConnectConsul(cfg *conf.EnvConfig) (*consulapi.Client, error) {
+func ConnectConsul(cfg *conf.ContainerConfig) (*consulapi.Client, error) {
 	config := consulapi.DefaultConfig()
 	config.Address = cfg.ServiceDiscoverUrl
 	return consulapi.NewClient(config)
 }
 
-func RegisterService(cfg *conf.EnvConfig, consulServer *consulapi.Client) error {
+func RegisterService(cfg *conf.ContainerConfig, consulServer *consulapi.Client) error {
 	registration := new(consulapi.AgentServiceRegistration)
 	registration.ID = cfg.ImageTag
 	registration.Name = cfg.AppName
