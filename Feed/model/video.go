@@ -20,7 +20,7 @@ type VideoInfo struct {
 	// 上传时间
 	UploadTime int64
 	// 作者
-	Author uint32
+	Author int64
 	// 状态
 	Status uint8
 }
@@ -176,7 +176,7 @@ func (v *VideoModel) Get(ctx context.Context, id int64) (*VideoInfo, error) {
 	video.Title = node.Props["title"].(string)
 	video.Size = node.Props["size"].(int64)
 	video.UploadTime = node.Props["upload_time"].(int64)
-	video.Author = node.Props["author"].(uint32)
+	video.Author = node.Props["author"].(int64)
 	video.Status = (uint8)(node.Props["status"].(int64))
 
 	return video, nil
@@ -228,7 +228,7 @@ func (v *VideoModel) ListByLastesTime(ctx context.Context, lastest_time int64) (
 	return result.([]*VideoInfo), nil
 }
 
-func (v *VideoModel) ListByAuthor(ctx context.Context, author uint32) ([]*VideoInfo, error) {
+func (v *VideoModel) ListByAuthor(ctx context.Context, author int64) ([]*VideoInfo, error) {
 	session := v.db.NewSession(ctx, neo4j.SessionConfig{})
 	defer session.Close(ctx)
 
@@ -239,6 +239,87 @@ func (v *VideoModel) ListByAuthor(ctx context.Context, author uint32) ([]*VideoI
 			RETURN v`,
 			map[string]interface{}{
 				"author": author,
+			},
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		var videos []*VideoInfo
+		for records.Next(ctx) {
+			record := records.Record()
+			node := record.Values[0].(neo4j.Node)
+			v := &VideoInfo{
+				ID:         node.Props["id"].(int64),
+				Name:       node.Props["name"].(string),
+				Title:      node.Props["title"].(string),
+				Size:       node.Props["size"].(int64),
+				UploadTime: node.Props["upload_time"].(int64),
+			}
+
+			videos = append(videos, v)
+		}
+
+		return videos, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result.([]*VideoInfo), nil
+}
+
+func (v *VideoModel) FavoriteVideo(ctx context.Context, videoID int64, userID int64) error {
+	session := v.db.NewSession(ctx, neo4j.SessionConfig{})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		_, err := tx.Run(ctx,
+			`MATCH (u:User {id: $user_id}), (v:Video {id: $video_id}) 
+			CREATE (u)-[r:FAVORITE]->(v)`,
+			map[string]interface{}{
+				"user_id":   userID,
+				"video_id":  videoID,
+				"timestamp": time.Now().Unix(),
+			},
+		)
+		return nil, err
+	})
+
+	return err
+}
+
+func (v *VideoModel) UnFavoriteVideo(ctx context.Context, videoID int64, userID int64) error {
+	session := v.db.NewSession(ctx, neo4j.SessionConfig{})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		_, err := tx.Run(ctx,
+			`MATCH (u:User {id: $user_id})-[r:FAVORITE]->(v:Video {id: $video_id}) 
+			DELETE r`,
+			map[string]interface{}{
+				"user_id":  userID,
+				"video_id": videoID,
+			},
+		)
+		return nil, err
+	})
+
+	return err
+}
+
+func (v *VideoModel) FavoriteList(ctx context.Context, userID int64) ([]*VideoInfo, error) {
+	session := v.db.NewSession(ctx, neo4j.SessionConfig{})
+	defer session.Close(ctx)
+
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		records, err := tx.Run(ctx,
+			`MATCH (u:User {id: $user_id})-[r:FAVORITE]->(v:Video) 
+			RETURN v`,
+			map[string]interface{}{
+				"user_id": userID,
 			},
 		)
 
