@@ -17,13 +17,13 @@ func InitRouter(prefix string) *gin.Engine {
 	{
 		douyin := r.Group(prefix + "douyin")
 
-		douyin.GET("feed/", FeedPlayerList)
+		douyin.GET("feed/", PlayerList)
 
 		{
 			publish := douyin.Group("publish/")
 
-			publish.POST("action/", FeedCreate)
-			publish.GET("list/", FeedPushList)
+			publish.POST("action/", CreateWorks)
+			publish.GET("list/", PushList)
 		}
 
 		{

@@ -2,27 +2,25 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sosyz/mini_tiktok_feed/Feed/common/conf"
+	cfg "github.com/sosyz/mini_tiktok_feed/Feed/common/conf"
+	cs "github.com/sosyz/mini_tiktok_feed/Feed/common/consul"
 )
 
-func GetServiceConnectInfo(consulUrl string, needServices ...any) map[string]*conf.Server {
-	ret := make(map[string]*conf.Server)
-	for idx, needneedService := range needServices {
-		ret[needneedService.(string)] = &conf.Server{
-			Host: "127.0.0.1",
-			Port: 8080 + idx,
-		}
-	}
-	return ret
-}
-
 func main() {
-	consulUrl := os.Getenv("DREAM_SERVICE_DISCOVERY_URI")
-	serviceMap := GetServiceConnectInfo(consulUrl, "feed", "auth")
-	InitService(serviceMap["feed"], serviceMap["auth"])
+	conf := cfg.ReadContainerConfig()
+	fmt.Printf("%v\n", conf)
+	consulConn, err := cs.ConnectConsul(conf)
+	if err != nil {
+		panic(err)
+	}
+	dependService := cs.GetServiceConnectInfo(consulConn, "bawling-minitiktok-feed", "bawling-minitiktok-auth")
+
+	cs.RegisterService(conf, consulConn)
+	s3Conf := cfg.ReadS3ConfigByEnv()
+	volConf := cfg.ReadSecretByEnv("VOL")
+	InitService(dependService["feed"], dependService["auth"], s3Conf, volConf)
 
 	r := InitRouter("")
 	service := ""
@@ -32,5 +30,5 @@ func main() {
 			"message": "ok",
 		})
 	})
-	r.Run(":8080")
+	r.Run(fmt.Sprintf("%s:%d", conf.ListenHost, conf.ListenPort))
 }

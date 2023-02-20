@@ -2,13 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sosyz/mini_tiktok_feed/Feed/common/conf"
+	"github.com/sosyz/mini_tiktok_feed/Feed/common/video"
 	auth "github.com/sosyz/mini_tiktok_feed/Feed/proto/pb/auth"
 	feed "github.com/sosyz/mini_tiktok_feed/Feed/proto/pb/feed"
+	"github.com/sosyz/mini_tiktok_feed/Feed/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -16,6 +23,8 @@ import (
 var (
 	FeedService feed.FeedServiceClient
 	AuthService auth.AuthServiceClient
+	S3Service   *service.S3Service
+	VideoHandle video.Video
 )
 
 func AuthdMiddleware() gin.HandlerFunc {
@@ -29,9 +38,9 @@ func AuthdMiddleware() gin.HandlerFunc {
 			}
 			c.JSON(
 				401,
-				&FeedPlayerListReply{
+				&Common{
 					StatusCode: -1,
-					StatusMsg:  &[]string{"unauthorized"}[0],
+					StatusMsg:  "unauthorized",
 				},
 			)
 			return
@@ -42,19 +51,19 @@ func AuthdMiddleware() gin.HandlerFunc {
 		if err != nil {
 			c.JSON(
 				401,
-				&FeedPlayerListReply{
+				&Common{
 					StatusCode: -1,
-					StatusMsg:  &[]string{"unauthorized"}[0],
+					StatusMsg:  "unauthorized",
 				},
 			)
 			return
 		}
-		c.Set("requsterID", res.UserId)
+		c.Set("reqUserID", res.UserId)
 		c.Next()
 	}
 }
 
-func InitService(feedConfig *conf.Server, authConfig *conf.Server) error {
+func InitService(feedConfig *conf.Server, authConfig *conf.Server, s3Config *conf.S3, volConfig *conf.Secret) error {
 	feedConn, err := grpc.Dial(
 		fmt.Sprintf("%s:%d", feedConfig.Host, feedConfig.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -75,23 +84,30 @@ func InitService(feedConfig *conf.Server, authConfig *conf.Server) error {
 	}
 
 	AuthService = auth.NewAuthServiceClient(authConn)
+
+	S3Service, err = service.NewS3Service(s3Config.Region, s3Config.Endpoint, s3Config.SecretId, s3Config.SecretKey, s3Config.Bucket)
+	if err != nil {
+		return err
+	}
+
+	VideoHandle = video.NewVolcengineService(volConfig.SecretId, volConfig.SecretKey)
 	return nil
 }
 
-func FeedPlayerList(c *gin.Context) {
+func PlayerList(c *gin.Context) {
 	latest_time := c.Query("latest_time")
-	userId := c.GetUint("user_id")
+	userId := c.GetInt64("reqUserID")
 
 	respHandler := func(code int64, msg string, nextTime int64, videos []Video) *FeedPlayerListReply {
 		ret := &FeedPlayerListReply{}
 		if code != 0 {
 			ret.StatusCode = code
-			ret.StatusMsg = &msg
+			ret.StatusMsg = msg
 			return ret
 		}
 		ret.StatusCode = 0
-		ret.StatusMsg = &msg
-		ret.NextTime = &nextTime
+		ret.StatusMsg = msg
+		ret.NextTime = nextTime
 		ret.VideoList = videos
 		return ret
 	}
@@ -111,7 +127,7 @@ func FeedPlayerList(c *gin.Context) {
 	}
 	res, err := FeedService.ListWatchVideos(context.Background(), &feed.ListWatchVideosRequest{
 		LastestTime: latestTime,
-		UserId:      uint32(userId),
+		UserId:      userId,
 	})
 	if err != nil {
 		c.JSON(500, respHandler(
@@ -152,75 +168,28 @@ func FeedPlayerList(c *gin.Context) {
 	)
 }
 
-func FeedPushList(c *gin.Context) {
-	token := c.Query("token")
-	user_id := c.Query("user_id")
-	respHandler := func(code int64, msg string, nextTime int64, videos []Video) *FeedPushListReply {
+func PushList(c *gin.Context) {
+	userId := c.GetInt64("reqUserID")
+	respHandler := func(code int64, msg string, videos []Video) *FeedPushListReply {
 		ret := &FeedPushListReply{}
 		if code != 0 {
 			ret.StatusCode = code
-			ret.StatusMsg = &msg
+			ret.StatusMsg = msg
 			return ret
 		}
 		ret.StatusCode = 0
-		ret.StatusMsg = &msg
-		ret.NextTime = &nextTime
+		ret.StatusMsg = msg
 		ret.VideoList = videos
 		return ret
 	}
 
-	userId, err := strconv.ParseUint(user_id, 10, 32)
-	if err != nil {
-		c.JSON(
-			400,
-			respHandler(
-				-1,
-				"invalid user_id",
-				0,
-				nil,
-			),
-		)
-		return
-	}
-
-	res, err := AuthService.Auth(c.Request.Context(), &auth.AuthRequest{
-		Token: token,
-	})
-
-	if err != nil {
-		c.JSON(
-			401,
-			respHandler(
-				-1,
-				"unauthorized",
-				0,
-				nil,
-			),
-		)
-		return
-	}
-
-	if res.UserId != uint32(userId) {
-		c.JSON(
-			401,
-			respHandler(
-				-1,
-				"unauthorized",
-				0,
-				nil,
-			),
-		)
-		return
-	}
-
 	videos, err := FeedService.ListPublishVideos(context.Background(), &feed.ListPublishVideosRequest{
-		UserId: uint32(userId),
+		UserId: userId,
 	})
 	if err != nil {
 		c.JSON(500, respHandler(
 			-1,
 			"feed service error",
-			0,
 			nil),
 		)
 		return
@@ -250,20 +219,101 @@ func FeedPushList(c *gin.Context) {
 		respHandler(
 			0,
 			"ok",
-			0,
 			retVideos,
 		),
 	)
 }
 
-func FeedCreate(c *gin.Context) {
-	fmt.Println("abc")
+func CreateWorks(c *gin.Context) {
+	reqUserID := c.GetInt64("requsterID")
+	title := c.PostForm("title")
+	file, err := c.FormFile("file")
+
+	respHandler := func(c *gin.Context, headCode int, code int64, msg string) {
+		c.JSON(
+			headCode,
+			&Common{
+				StatusCode: code,
+				StatusMsg:  msg,
+			},
+		)
+	}
+
+	if err != nil {
+		respHandler(c, 400, -1, "invalid file")
+		return
+	}
+
+	fileHandle, err := file.Open()
+	if err != nil {
+		respHandler(c, 400, -1, "invalid file")
+		return
+	}
+
+	defer fileHandle.Close()
+	fileBytes, err := ioutil.ReadAll(fileHandle)
+
+	file_path := fmt.Sprintf("%s/%s", md5.New().Sum([]byte(fmt.Sprintf("%d", reqUserID))), uuid.New().String())
+
+	public_url, err := S3Service.SaveFile(file_path, fileBytes)
+	if err != nil {
+		respHandler(c, 500, -1, "save file error")
+		return
+	}
+
+	cover, err := VideoHandle.GetVideoCover(public_url)
+	if err != nil || len(cover) == 0 {
+		respHandler(c, 500, -1, "get video cover error")
+		return
+	}
+
+	cover_buff, err := io.ReadAll(cover[0])
+	if err != nil {
+		respHandler(c, 500, -1, "get video cover error")
+		return
+	}
+
+	cover_path, err := S3Service.SaveFile(fmt.Sprintf("%s_cover", file_path), cover_buff)
+	if err != nil {
+		respHandler(c, 500, -1, "save cover error")
+		return
+	}
+
+	res, err := FeedService.PublishVideo(c.Request.Context(), &feed.PublishVideoRequest{
+		UserId:   reqUserID,
+		Title:    title,
+		PlayUrl:  public_url,
+		CoverUrl: cover_path,
+	})
+
+	if err != nil {
+		respHandler(c, 500, -1, "feed service error")
+		return
+	}
+
+	if res.StatusCode != 0 {
+		respHandler(c, 403, -1, res.StatusMsg)
+		return
+	}
+	respHandler(c, 200, 0, "ok")
 }
 
 func FavoriteCreate(c *gin.Context) {
-
+	c.JSON(
+		http.StatusOK,
+		&Common{
+			StatusCode: 0,
+			StatusMsg:  "ok",
+		},
+	)
 }
 
 func FavoriteList(c *gin.Context) {
-
+	c.JSON(
+		http.StatusOK,
+		&Common{
+			StatusCode: 0,
+			StatusMsg:  "ok",
+		},
+	)
 }
