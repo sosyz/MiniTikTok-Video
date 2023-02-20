@@ -27,16 +27,17 @@ type Neo4j struct {
 	Realm    string
 }
 
-type S3 struct {
-	Region   string
-	Endpoint string
-	Secret   Secret
-	Bucket   string
+type Secret struct {
+	SecretId  string
+	SecretKey string
 }
 
-type Secret struct {
-	Id  string
-	Key string
+type S3 struct {
+	Region    string
+	Endpoint  string
+	Bucket    string
+	SecretId  string
+	SecretKey string
 }
 
 type Listen struct {
@@ -78,13 +79,11 @@ func ReadS3ConfigByEnv() *S3 {
 	viper.SetEnvPrefix("DREAM_S3")
 	viper.AutomaticEnv()
 	return &S3{
-		Region:   viper.GetString("REGION"),
-		Endpoint: viper.GetString("ENDPOINT"),
-		Secret: Secret{
-			Id:  viper.GetString("SECRETID"),
-			Key: viper.GetString("SECRETKEY"),
-		},
-		Bucket: viper.GetString("BUCKET"),
+		Region:    viper.GetString("REGION"),
+		Endpoint:  viper.GetString("ENDPOINT"),
+		SecretId:  viper.GetString("SECRETID"),
+		SecretKey: viper.GetString("SECRETKEY"),
+		Bucket:    viper.GetString("BUCKET"),
 	}
 }
 
@@ -99,12 +98,12 @@ func ReadRedisConfigByEnv() *Redis {
 	}
 }
 
-func ReadSecretByEnv() *Secret {
-	viper.SetEnvPrefix("DREAM_SECRET")
+func ReadSecretByEnv(prefix string) *Secret {
+	viper.SetEnvPrefix("DREAM_" + prefix)
 	viper.AutomaticEnv()
 	return &Secret{
-		Id:  viper.GetString("ID"),
-		Key: viper.GetString("KEY"),
+		SecretId:  viper.GetString("SECRETID"),
+		SecretKey: viper.GetString("SECRETKEY"),
 	}
 }
 
