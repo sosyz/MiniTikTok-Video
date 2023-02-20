@@ -32,8 +32,8 @@ func TestUpload(t *testing.T) {
 	s, err := NewS3Service(
 		s3Conf.Region,
 		s3Conf.Endpoint,
-		s3Conf.Secret.Id,
-		s3Conf.Secret.Key,
+		s3Conf.SecretId,
+		s3Conf.SecretKey,
 		s3Conf.Bucket,
 	)
 	if err != nil {
@@ -53,9 +53,9 @@ func TestUpload(t *testing.T) {
 	buffer := make([]byte, size)
 	file.Read(buffer)
 	// t.Logf("file content: %s\n", buffer)
-	err = s.SaveFile(file.Name(), buffer)
+	path, err := s.SaveFile(file.Name(), buffer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Successfully uploaded %q to %q\n", file.Name(), s3Conf.Region)
+	t.Logf("Successfully uploaded %q to %q\n", file.Name(), path)
 }

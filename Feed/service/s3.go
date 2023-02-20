@@ -36,7 +36,7 @@ func NewS3Service(region, endpoint, secretId, secretKey, bucket string) (*S3Serv
 }
 
 // SaveFile 保存文件至S3
-func (s *S3Service) SaveFile(filePath string, file []byte) error {
+func (s *S3Service) SaveFile(filePath string, file []byte) (string, error) {
 	service := s3.New(s.cfg)
 	_, err := service.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
@@ -45,9 +45,9 @@ func (s *S3Service) SaveFile(filePath string, file []byte) error {
 	})
 
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return fmt.Sprintf("%s.%s/%s", s.bucket, s.endpoint, filePath), nil
 }
 
 // GetFile 获取文件
