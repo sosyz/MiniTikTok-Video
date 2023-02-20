@@ -33,7 +33,7 @@ func TestCreate(t *testing.T) {
 	t.Log(neo4jConf)
 	ctx := context.Background()
 	vm, err := NewVideoModel(
-		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
+		fmt.Sprintf("bolt+s://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
 		neo4jConf.Realm,
@@ -83,7 +83,7 @@ func TestGet(t *testing.T) {
 	t.Log(neo4jConf)
 	ctx := context.Background()
 	vm, err := NewVideoModel(
-		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
+		fmt.Sprintf("bolt+s://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
 		neo4jConf.Realm,
@@ -126,7 +126,7 @@ func TestListByLastesTime(t *testing.T) {
 	t.Log(neo4jConf)
 	ctx := context.Background()
 	vm, err := NewVideoModel(
-		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
+		fmt.Sprintf("bolt+s://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
 		neo4jConf.Realm,
@@ -168,7 +168,7 @@ func TestUpdate(t *testing.T) {
 	t.Log(neo4jConf)
 	ctx := context.Background()
 	vm, err := NewVideoModel(
-		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
+		fmt.Sprintf("bolt+s://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
 		neo4jConf.Realm,
@@ -220,7 +220,7 @@ func TestDelete(t *testing.T) {
 	t.Log(neo4jConf)
 	ctx := context.Background()
 	vm, err := NewVideoModel(
-		fmt.Sprintf("bolt://%s:%d", neo4jConf.Host, neo4jConf.Port),
+		fmt.Sprintf("bolt+s://%s:%d", neo4jConf.Host, neo4jConf.Port),
 		neo4jConf.User,
 		neo4jConf.Password,
 		neo4jConf.Realm,
