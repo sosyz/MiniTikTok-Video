@@ -5,25 +5,25 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sosyz/mini_tiktok_feed/Feed/common/conf"
 	"github.com/sosyz/mini_tiktok_feed/Feed/common/video"
-	auth "github.com/sosyz/mini_tiktok_feed/Feed/proto/pb/auth"
-	feed "github.com/sosyz/mini_tiktok_feed/Feed/proto/pb/feed"
-	"github.com/sosyz/mini_tiktok_feed/Feed/service"
+	pb_auth "github.com/sosyz/mini_tiktok_feed/Feed/proto/pb/auth"
+	pb_feed "github.com/sosyz/mini_tiktok_feed/Feed/proto/pb/feed"
+	svc_feed "github.com/sosyz/mini_tiktok_feed/Feed/service/feed"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
-	FeedService feed.FeedServiceClient
-	AuthService auth.AuthServiceClient
-	S3Service   *service.S3Service
+	FeedService pb_feed.FeedServiceClient
+	AuthService pb_auth.AuthServiceClient
+	S3Service   *svc_feed.S3Service
 	VideoHandle video.Video
 )
 
@@ -45,7 +45,7 @@ func AuthdMiddleware() gin.HandlerFunc {
 			)
 			return
 		}
-		res, err := AuthService.Auth(c.Request.Context(), &auth.AuthRequest{
+		res, err := AuthService.Auth(c.Request.Context(), &pb_auth.AuthRequest{
 			Token: token,
 		})
 		if err != nil {
@@ -72,7 +72,7 @@ func InitService(feedConfig *conf.Server, authConfig *conf.Server, s3Config *con
 	if err != nil {
 		return err
 	}
-	FeedService = feed.NewFeedServiceClient(feedConn)
+	FeedService = pb_feed.NewFeedServiceClient(feedConn)
 
 	authConn, err := grpc.Dial(
 		fmt.Sprintf("%s:%d", authConfig.Host, authConfig.Port),
@@ -83,9 +83,9 @@ func InitService(feedConfig *conf.Server, authConfig *conf.Server, s3Config *con
 		return err
 	}
 
-	AuthService = auth.NewAuthServiceClient(authConn)
+	AuthService = pb_auth.NewAuthServiceClient(authConn)
 
-	S3Service, err = service.NewS3Service(s3Config.Region, s3Config.Endpoint, s3Config.SecretId, s3Config.SecretKey, s3Config.Bucket)
+	S3Service, err = svc_feed.NewS3Service(s3Config.Region, s3Config.Endpoint, s3Config.SecretId, s3Config.SecretKey, s3Config.Bucket)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func PlayerList(c *gin.Context) {
 		)
 		return
 	}
-	res, err := FeedService.ListWatchVideos(context.Background(), &feed.ListWatchVideosRequest{
+	res, err := FeedService.ListWatchVideos(context.Background(), &pb_feed.ListWatchVideosRequest{
 		LastestTime: latestTime,
 		UserId:      userId,
 	})
@@ -183,7 +183,7 @@ func PushList(c *gin.Context) {
 		return ret
 	}
 
-	videos, err := FeedService.ListPublishVideos(context.Background(), &feed.ListPublishVideosRequest{
+	videos, err := FeedService.ListPublishVideos(context.Background(), &pb_feed.ListPublishVideosRequest{
 		UserId: userId,
 	})
 	if err != nil {
@@ -244,14 +244,17 @@ func CreateWorks(c *gin.Context) {
 		return
 	}
 
-	fileHandle, err := file.Open()
+	open_file, err := os.Open(file.Filename)
 	if err != nil {
-		respHandler(c, 400, -1, "invalid file")
+		respHandler(c, 500, -1, "open file error")
 		return
 	}
 
-	defer fileHandle.Close()
-	fileBytes, err := ioutil.ReadAll(fileHandle)
+	fileBytes, err := io.ReadAll(open_file)
+	if err != nil {
+		respHandler(c, 500, -1, "read file error")
+		return
+	}
 
 	file_path := fmt.Sprintf("%s/%s", md5.New().Sum([]byte(fmt.Sprintf("%d", reqUserID))), uuid.New().String())
 
@@ -279,7 +282,7 @@ func CreateWorks(c *gin.Context) {
 		return
 	}
 
-	res, err := FeedService.PublishVideo(c.Request.Context(), &feed.PublishVideoRequest{
+	res, err := FeedService.PublishVideo(c.Request.Context(), &pb_feed.PublishVideoRequest{
 		UserId:   reqUserID,
 		Title:    title,
 		PlayUrl:  public_url,
