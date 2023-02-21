@@ -55,9 +55,9 @@ func (v *FeedService) ListWatchVideos(ctx context.Context, req *feed.ListWatchVi
 	var resp feed.ListWatchVideosResponse
 	nextTime := int64(0)
 	for _, video := range videos {
-		userInfo, err := v.userService.GetInfo(ctx, &user.UserInfoRequest{
-			TargetId: video.Author,
-			SelfId:   req.UserId,
+		userInfos, err := v.userService.GetFullInfos(ctx, &user.FollowCheckRequests{
+			SelfId:    req.UserId,
+			TargetIds: []int64{video.Author},
 		})
 		if err != nil {
 			return nil, err
@@ -66,10 +66,10 @@ func (v *FeedService) ListWatchVideos(ctx context.Context, req *feed.ListWatchVi
 		resp.Videos = append(resp.Videos, &feed.Video{
 			Id: video.ID,
 			Author: &feed.User{
-				Id:            userInfo.UserId,
-				Name:          userInfo.Username,
-				FollowCount:   int64(userInfo.FollowCount),
-				FollowerCount: int64(userInfo.FollowerCount),
+				Id:            userInfos.Infos[0].Id,
+				Name:          userInfos.Infos[0].Name,
+				FollowCount:   int64(userInfos.Infos[0].FollowCount),
+				FollowerCount: int64(userInfos.Infos[0].FollowerCount),
 			},
 			Title:    video.Title,
 			PlayUrl:  video.Name,
@@ -90,19 +90,19 @@ func (v *FeedService) ListPublishVideos(ctx context.Context, req *feed.ListPubli
 		return nil, err
 	}
 
-	userRes, err := v.userService.GetInfo(ctx, &user.UserInfoRequest{
-		TargetId: req.UserId,
-		SelfId:   req.UserId,
+	userInfos, err := v.userService.GetFullInfos(ctx, &user.FollowCheckRequests{
+		SelfId:    req.UserId,
+		TargetIds: []int64{req.UserId},
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	userInfo := &feed.User{
-		Id:            userRes.UserId,
-		Name:          userRes.Username,
-		FollowCount:   int64(userRes.FollowCount),
-		FollowerCount: int64(userRes.FollowerCount),
+		Id:            userInfos.Infos[0].Id,
+		Name:          userInfos.Infos[0].Name,
+		FollowCount:   int64(userInfos.Infos[0].FollowCount),
+		FollowerCount: int64(userInfos.Infos[0].FollowerCount),
 	}
 
 	var resp feed.ListPublishVideosResponse
