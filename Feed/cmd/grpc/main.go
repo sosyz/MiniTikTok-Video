@@ -56,6 +56,7 @@ func main() {
 	pb_feed.RegisterFeedServiceServer(s, feedService)
 	cs.RegisterService(cfg, consulConn)
 	err = s.Serve(lis)
+	cs.RegisterService(cfg, consulConn)
 	if err != nil {
 		panic(err)
 	}

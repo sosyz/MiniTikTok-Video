@@ -30,5 +30,6 @@ func main() {
 			"message": "ok",
 		})
 	})
+	cs.RegisterService(conf, consulConn)
 	r.Run(fmt.Sprintf("%s:%d", conf.ListenHost, conf.ListenPort))
 }
