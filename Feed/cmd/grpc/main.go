@@ -54,10 +54,14 @@ func main() {
 		panic(err)
 	}
 	pb_feed.RegisterFeedServiceServer(s, feedService)
-	cs.RegisterService(cfg, consulConn)
+
 	err = s.Serve(lis)
-	cs.RegisterService(cfg, consulConn)
 	if err != nil {
 		panic(err)
 	}
+	svrID, err := cs.RegisterService(cfg, consulConn)
+	if err != nil {
+		panic(err)
+	}
+	defer cs.UnregisterService(svrID, consulConn)
 }

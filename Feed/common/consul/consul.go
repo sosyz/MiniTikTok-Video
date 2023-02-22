@@ -3,6 +3,7 @@ package consul
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/sosyz/mini_tiktok_feed/Feed/common/conf"
 )
@@ -13,9 +14,10 @@ func ConnectConsul(cfg *conf.ContainerConfig) (*consulapi.Client, error) {
 	return consulapi.NewClient(config)
 }
 
-func RegisterService(cfg *conf.ContainerConfig, consulServer *consulapi.Client) error {
+func RegisterService(cfg *conf.ContainerConfig, consulServer *consulapi.Client) (string, error) {
+	svrID := uuid.New().String()
 	registration := new(consulapi.AgentServiceRegistration)
-	registration.ID = cfg.ImageTag
+	registration.ID = svrID
 	registration.Name = cfg.AppName
 	registration.Port = cfg.ListenPort
 	registration.Tags = []string{cfg.AppVersion, cfg.ENV, cfg.RegionName}
@@ -27,7 +29,11 @@ func RegisterService(cfg *conf.ContainerConfig, consulServer *consulapi.Client) 
 		DeregisterCriticalServiceAfter: "10s",
 	}
 
-	return consulServer.Agent().ServiceRegister(registration)
+	return svrID, consulServer.Agent().ServiceRegister(registration)
+}
+
+func UnregisterService(svrID string, consulServer *consulapi.Client) error {
+	return consulServer.Agent().ServiceDeregister(svrID)
 }
 
 func GetServiceConnectInfo(consulServer *consulapi.Client, needServices ...any) map[string]*conf.Server {

@@ -17,7 +17,6 @@ func main() {
 	}
 	dependService := cs.GetServiceConnectInfo(consulConn, "bawling-minitiktok-feed", "bawling-minitiktok-auth")
 
-	cs.RegisterService(conf, consulConn)
 	s3Conf := cfg.ReadS3ConfigByEnv()
 	volConf := cfg.ReadSecretByEnv("VOL")
 	InitService(dependService["feed"], dependService["auth"], s3Conf, volConf)
@@ -30,6 +29,10 @@ func main() {
 			"message": "ok",
 		})
 	})
-	cs.RegisterService(conf, consulConn)
+	svrID, err := cs.RegisterService(conf, consulConn)
+	if err != nil {
+		panic(err)
+	}
+	defer cs.UnregisterService(svrID, consulConn)
 	r.Run(fmt.Sprintf("%s:%d", conf.ListenHost, conf.ListenPort))
 }
